@@ -1,0 +1,18 @@
+.quill-editor-container {
+  height: 400px;
+  margin-bottom: 20px;
+}
+
+.quill-editor {
+  height: 350px;
+}
+
+.ql-editor {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.ql-editor.ql-blank::before {
+  color: #9ca3af;
+  font-style: italic;
+}
