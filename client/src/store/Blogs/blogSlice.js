@@ -12,9 +12,7 @@ const blogSlice = createSlice({
       state.items = state.items.push(action.payload);
     },
     removeBlog: (state, action) => {
-      state.items = state.items.filter(
-        (item) => item._id !== action.payload._id
-      );
+      state.items = state.items.filter((item) => item._id !== action.payload);
     },
     updateBlog: (state, action) => {
       const item = state.items.find((item) => item._id === action.payload._id);

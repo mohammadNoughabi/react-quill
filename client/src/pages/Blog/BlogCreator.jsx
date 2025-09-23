@@ -2,9 +2,12 @@ import { useState, useRef, useCallback } from "react";
 import debounce from "lodash/debounce";
 import api from "../../api/api";
 import QuillEditor from "../../components/QuillEditor/QuillEditor";
+import { useNavigate } from "react-router-dom";
+import { addBlog } from "../../store/Blogs/blogSlice";
+import { useDispatch } from "react-redux";
 
 // Utility function to convert base64 to File
-const dataURLtoFile = (dataUrl, filename) => {
+const convertDataUrlToFile = (dataUrl, filename) => {
   const arr = dataUrl.split(",");
   const mime = arr[0].match(/:(.*?);/)[1];
   const bstr = atob(arr[1]);
@@ -26,8 +29,10 @@ const extractImagesFromContent = (content) => {
   images.forEach((img, index) => {
     const src = img.getAttribute("src");
     if (src && src.startsWith("data:image/")) {
-      const filename = `content-image-${index + 1}.${src.split(";")[0].split("/")[1]}`;
-      const file = dataURLtoFile(src, filename);
+      const filename = `content-image-${index + 1}.${
+        src.split(";")[0].split("/")[1]
+      }`;
+      const file = convertDataUrlToFile(src, filename);
       if (file.size > 5 * 1024 * 1024) {
         // Optional: Add size validation for content images
         return;
@@ -48,6 +53,8 @@ const BlogCreator = () => {
   const [errors, setErrors] = useState({});
   const [previewUrl, setPreviewUrl] = useState("");
   const fileInputRef = useRef(null);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   // Handle input changes
   const handleInputChange = useCallback(
@@ -175,7 +182,7 @@ const BlogCreator = () => {
       return;
     }
     contentImages.forEach((image) => {
-      formData.append("contentImages", image); 
+      formData.append("contentImages", image);
     });
 
     try {
@@ -185,7 +192,9 @@ const BlogCreator = () => {
         },
       });
 
-      alert("Blog created successfully!");
+      dispatch(addBlog(response.data.createdBlog))
+
+      alert(response.data.message || "Blog created successfully!");
 
       // Reset form
       setData({
@@ -217,6 +226,14 @@ const BlogCreator = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      <button
+        onClick={() => {
+          navigate("/");
+        }}
+        className="m-8 p-4 text-secondary bg-red-500 cursor-pointer rounded border-1 text-2xl"
+      >
+        Go to Home
+      </button>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-3xl font-bold text-center text-gray-900 mb-8">
           Create New Blog Post
@@ -275,7 +292,9 @@ const BlogCreator = () => {
                           d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                         />
                       </svg>
-                      <p className="text-gray-600">Click to select main image</p>
+                      <p className="text-gray-600">
+                        Click to select main image
+                      </p>
                       <p className="text-sm text-gray-500 mt-1">
                         PNG, JPG, JPEG up to 5MB
                       </p>
@@ -316,7 +335,9 @@ const BlogCreator = () => {
                 />
 
                 {errors.mainImage && (
-                  <p className="mt-1 text-sm text-red-600">{errors.mainImage}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.mainImage}
+                  </p>
                 )}
               </div>
 
