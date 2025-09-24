@@ -1,11 +1,6 @@
 import Blog from "../models/Blog.js";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
-
-// Recreate __dirname and __filename
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export async function getOne(req, res) {
   try {
@@ -58,99 +53,157 @@ export async function create(req, res) {
   }
 }
 
-export async function update(req, res) {}
-
-export async function deleteOne(req, res) {
+export async function update(req, res) {
   try {
     const id = req.params.id;
+    const { title, content } = req.body;
 
-    // Validate ID parameter
+    // Validate blog ID
     if (!id) {
       return res.status(400).json({ message: "Blog ID is required" });
     }
 
-    // Find the blog first to get file information
+    // Find existing blog
     const blog = await Blog.findById(id);
     if (!blog) {
       return res.status(404).json({ message: "Blog not found" });
     }
 
-    // Store blog title for response message before deletion
-    const blogTitle = blog.title;
+    // Prepare update object
+    const updateData = {};
+    if (title) updateData.title = title;
+    if (content) updateData.content = content;
 
-    // Handle file deletion asynchronously without blocking the response
-    if (blog.mainImage || blog.contentImages?.length > 0) {
-      deleteBlogFiles(blog.mainImage, blog.contentImages);
+    // Handle main image update
+    let filesToDelete = [];
+    if (req.files?.mainImage?.[0]?.filename) {
+      filesToDelete.push(blog.mainImage); // Store old main image for deletion
+      updateData.mainImage = req.files.mainImage[0].filename;
     }
 
-    // Delete the blog from database
+    // Handle content images update
+    if (req.files?.contentImages?.length > 0) {
+      filesToDelete.push(...blog.contentImages); // Store old content images for deletion
+      updateData.contentImages = req.files.contentImages.map(
+        (item) => item.filename
+      );
+    }
+
+    // Update blog in database
+    const updatedBlog = await Blog.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    });
+
+    // Delete old files if new ones were uploaded
+    if (filesToDelete.length > 0) {
+      try {
+        await deleteBlogFiles(
+          filesToDelete.includes(blog.mainImage) ? blog.mainImage : null,
+          filesToDelete.filter((file) => blog.contentImages.includes(file))
+        );
+      } catch (fileError) {
+        console.error("File deletion failed:", fileError);
+        // Continue with response but log file deletion issue
+      }
+    }
+
+    return res.status(200).json({
+      message: `Blog "${updatedBlog.title}" updated successfully`,
+      updatedBlog,
+    });
+  } catch (error) {
+    console.error("Error updating blog:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function deleteOne(req, res) {
+  try {
+    const id = req.params.id;
+
+    if (!id) {
+      return res.status(400).json({ message: "Blog ID is required" });
+    }
+
+    const blog = await Blog.findById(id);
+    if (!blog) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
+
+    const blogTitle = blog.title;
+
+    // Delete files if they exist
+    if (blog.mainImage || blog.contentImages?.length > 0) {
+      try {
+        await deleteBlogFiles(blog.mainImage, blog.contentImages);
+      } catch (fileError) {
+        console.error("File deletion failed:", fileError);
+        // Continue with database deletion but inform client of file issue
+      }
+    }
+
     await Blog.findByIdAndDelete(id);
 
     return res.status(200).json({
       message: `Blog "${blogTitle}" deleted successfully`,
-      deletedBlog: {
-        id: blog._id,
-        title: blogTitle,
-      },
+      deletedBlog: { id: blog._id, title: blogTitle },
     });
   } catch (error) {
     console.error("Error deleting blog:", error);
-    return res.status(500).json({
-      message: "Internal server error",
-    });
+    return res.status(500).json({ message: "Internal server error" });
   }
 }
 
-// Helper function to handle file deletion asynchronously
 async function deleteBlogFiles(mainImage, contentImages = []) {
   try {
     const filePaths = [];
-    const uploadsDir = path.join(process.cwd(), "uploads");
+    const uploadsDir = path.join(process.cwd(), "/src/uploads");
 
-    // Add main image if it exists
     if (mainImage && typeof mainImage === "string") {
-      const mainImagePath = path.join(uploadsDir, mainImage);
+      const mainImagePath = path.join(uploadsDir, path.basename(mainImage));
+      console.log(`Checking main image: ${mainImagePath}`);
       if (await fileExists(mainImagePath)) {
         filePaths.push(mainImagePath);
+      } else {
+        console.warn(`Main image not found: ${mainImagePath}`);
       }
     }
 
-    // Add content images if they exist
     if (Array.isArray(contentImages)) {
       for (const image of contentImages) {
         if (image && typeof image === "string") {
-          const contentImagePath = path.join(uploadsDir, image);
+          const contentImagePath = path.join(uploadsDir, path.basename(image));
+          console.log(`Checking content image: ${contentImagePath}`);
           if (await fileExists(contentImagePath)) {
             filePaths.push(contentImagePath);
+          } else {
+            console.warn(`Content image not found: ${contentImagePath}`);
           }
         }
       }
+    } else {
+      console.warn("contentImages is not an array:", contentImages);
     }
 
-    // Delete files asynchronously
+    console.log(filePaths);
+
     if (filePaths.length > 0) {
-      Promise.all(
+      await Promise.all(
         filePaths.map((filePath) =>
           fs.promises.unlink(filePath).catch((error) => {
-            console.warn(`Failed to delete file ${filePath}:`, error.message);
+            console.error(`Failed to delete file ${filePath}:`, error.message);
           })
         )
-      )
-        .then(() => {
-          console.log(
-            `Successfully deleted ${filePaths.length} files for blog`
-          );
-        })
-        .catch((error) => {
-          console.error("Error in file deletion process:", error);
-        });
+      );
+      console.log(`Successfully deleted ${filePaths.length} files`);
     }
   } catch (error) {
     console.error("Error preparing files for deletion:", error);
+    throw error;
   }
 }
 
-// Helper function to check if file exists
 async function fileExists(filePath) {
   try {
     await fs.promises.access(filePath);

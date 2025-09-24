@@ -22,7 +22,14 @@ blogRouter.post(
   ]),
   create
 );
-blogRouter.put("/:id", update);
+blogRouter.put(
+  "/:id",
+  upload.fields([
+    { name: "mainImage", maxCount: 1 },
+    { name: "contentImages" },
+  ]),
+  update
+);
 blogRouter.delete("/:id", deleteOne);
 
 export default blogRouter;
