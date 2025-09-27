@@ -33,11 +33,22 @@ export async function create(req, res) {
           "Title , MainImage , and Content are required for creating blog",
       });
     }
+
+    const existingBlog = await Blog.findOne({ title });
+    if (existingBlog) {
+      return res
+        .status(400)
+        .json({ message: "This blog already exists. Choose another title." });
+    }
+
     const mainImage = req.files.mainImage[0].filename;
     let contentImages = [];
-    req.files.contentImages.map((item) => {
-      contentImages.push(item.filename);
-    });
+    if (req.files.contentImages) {
+      req.files.contentImages.map((item) => {
+        contentImages.push(item.filename);
+      });
+    }
+
     const newBlog = new Blog({
       title,
       mainImage,
@@ -45,9 +56,10 @@ export async function create(req, res) {
       contentImages,
     });
     await newBlog.save();
-    return res
-      .status(200)
-      .json({ message: "New Blog created successfully", createdBlog: newBlog });
+    return res.status(200).json({
+      message: `Blog ${title} created successfully`,
+      createdBlog: newBlog,
+    });
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }

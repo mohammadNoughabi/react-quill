@@ -13,7 +13,9 @@ const BlogList = () => {
   const [sortBy, setSortBy] = useState("newest");
 
   useEffect(() => {
-    fetchBlogs();
+    if (status === "idle") {
+      dispatch(fetchBlogs());
+    }
   }, [status, dispatch]);
 
   const handleDelete = async (id) => {
@@ -47,6 +49,15 @@ const BlogList = () => {
 
   if (status === "failed") {
     return <div>Error: {error}</div>;
+  }
+
+  {
+    blogs.length === 0 && (
+      <div className="text-center py-20">
+        <h3 className="text-3xl font-bold text-gray-600 mb-3">No blogs yet</h3>
+        ...
+      </div>
+    );
   }
 
   // Sort blogs based on selection

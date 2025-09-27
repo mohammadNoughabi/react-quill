@@ -209,7 +209,7 @@ const BlogCreator = () => {
       }
     } catch (error) {
       console.error("Error creating blog:", error);
-      alert("Error in creating blog: " + error.message);
+      alert("Error in creating blog: " + error.response.data.message);
     }
   };
 

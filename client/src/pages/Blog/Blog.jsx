@@ -15,7 +15,6 @@ const Blog = () => {
       setLoading(true);
       setError(null);
       const response = await api.get(`/api/blog/get-one/${id}`);
-      console.log(response);
       setBlog(response.data.blog);
     } catch (error) {
       console.log(error);
@@ -85,16 +84,6 @@ const Blog = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
       <div className="container mx-auto px-4 max-w-4xl">
-        {/* Back Button */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-8 group transition duration-200"
-        >
-          <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to Previous Page
-        </button>
 
         {/* Blog Content Card */}
         <article className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -159,7 +148,7 @@ const Blog = () => {
         {/* Footer Navigation */}
         <div className="flex justify-between items-center mt-8 pt-8 border-t border-gray-200">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/')}
             className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition duration-200"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
